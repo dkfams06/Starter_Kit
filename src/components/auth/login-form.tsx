@@ -12,6 +12,7 @@ export function LoginForm() {
   function handleSubmit(formData: FormData) {
     setError(null);
     startTransition(async () => {
+      try {
       const result = await signIn("credentials", {
         email: String(formData.get("email") ?? ""),
         password: String(formData.get("password") ?? ""),
@@ -25,6 +26,9 @@ export function LoginForm() {
 
       router.push("/admin");
       router.refresh();
+      } catch {
+        setError("로그인 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      }
     });
   }
 

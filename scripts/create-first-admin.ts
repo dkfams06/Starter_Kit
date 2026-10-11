@@ -13,16 +13,13 @@ async function main() {
     role: "ADMIN",
   });
 
-  const userCount = await prisma.user.count();
-  if (userCount > 0) {
-    throw new Error(
-      "First administrator creation is only allowed when no users exist.",
-    );
-  }
-
   const passwordHash = await hashPassword(input.password);
 
   await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(701003)`;
+    if (await tx.user.count({ where: { role: "ADMIN" } }) > 0) {
+      throw new Error("First administrator creation is only allowed when no administrator exists.");
+    }
     const admin = await tx.user.create({
       data: {
         name: input.name,

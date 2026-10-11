@@ -6,6 +6,7 @@ import type { Role } from "@/generated/prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { HttpError } from "@/lib/http-error";
+import { DEMO_USER_ID, isDemoEnabled } from "@/lib/auth/demo-policy";
 
 export type CurrentUser = {
   id: string;
@@ -33,6 +34,7 @@ async function loadCurrentUser(): Promise<CurrentUser | null> {
   });
 
   if (!user?.isActive) return null;
+  if (user.id === DEMO_USER_ID && (!isDemoEnabled() || user.role !== "USER")) return null;
 
   return { ...user, isActive: true };
 }

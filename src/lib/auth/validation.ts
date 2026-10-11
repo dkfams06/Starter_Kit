@@ -44,5 +44,10 @@ export const firstAdminSchema = createUserSchema.extend({
   role: z.literal("ADMIN").default("ADMIN"),
 });
 
+export const registerSchema = createUserSchema.omit({ role: true }).strict()
+  .refine((value) => !value.email.endsWith(".invalid"), {
+    message: "사용 가능한 이메일 주소를 입력해 주세요.", path: ["email"],
+  });
+
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
