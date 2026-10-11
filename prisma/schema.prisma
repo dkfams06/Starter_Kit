@@ -39,6 +39,22 @@ enum AuditAction {
   PRODUCT_UPDATED
   PRODUCT_DEACTIVATED
   PRODUCT_DELETED
+  ORDER_CREATED
+  ORDER_UPDATED
+  ORDER_CONFIRMED
+  ORDER_CONFIRMATION_REVERTED
+  ORDER_CANCELLED
+  ORDER_DELETED
+  ORDER_SHIPPED
+  ORDER_EXPORTED
+  DEMO_RESET
+}
+
+enum OrderStatus {
+  RECEIVED
+  CONFIRMED
+  SHIPPED
+  CANCELLED
 }
 
 model Customer {
@@ -54,6 +70,8 @@ model Customer {
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  hasOrderHistory Boolean @default(false)
+  orders CustomerOrder[]
 
   @@index([isActive, name])
 }
@@ -69,6 +87,8 @@ model Product {
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  hasOrderHistory Boolean @default(false)
+  orderItems OrderItem[]
 
   @@index([isActive, name])
 }
@@ -87,6 +107,10 @@ model User {
   accounts      Account[]
   sessions      Session[]
   auditLogs     AuditLog[] @relation("AuditActor")
+  createdOrders CustomerOrder[] @relation("OrderCreator")
+  confirmedOrders CustomerOrder[] @relation("OrderConfirmer")
+  cancelledOrders CustomerOrder[] @relation("OrderCanceller")
+  shipments Shipment[]
 
   @@index([role, isActive])
 }
@@ -149,4 +173,72 @@ model Task {
   updatedAt   DateTime   @updatedAt
 
   @@index([status])
+}
+
+model CustomerOrder {
+  id String @id @default(cuid())
+  orderNo String @unique
+  customerId String
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  customerCodeSnapshot String
+  customerNameSnapshot String
+  shippingAddress String
+  status OrderStatus @default(RECEIVED)
+  version Int @default(1)
+  orderedAt DateTime @default(now())
+  requestedShipDate DateTime? @db.Date
+  totalAmount Decimal @db.Decimal(16, 2)
+  memo String?
+  createdById String?
+  createdBy User? @relation("OrderCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  firstConfirmedAt DateTime?
+  confirmedById String?
+  confirmedBy User? @relation("OrderConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
+  confirmedAt DateTime?
+  cancelledById String?
+  cancelledBy User? @relation("OrderCanceller", fields: [cancelledById], references: [id], onDelete: SetNull)
+  cancelledAt DateTime?
+  cancelReason String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  items OrderItem[]
+  shipment Shipment?
+  @@index([status, orderedAt])
+  @@index([customerId, orderedAt])
+}
+
+model OrderItem {
+  id String @id @default(cuid())
+  orderId String
+  order CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  lineNo Int
+  productId String
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productCodeSnapshot String
+  productNameSnapshot String
+  specificationSnapshot String?
+  unitSnapshot String
+  quantity Decimal @db.Decimal(14, 3)
+  unitPrice Decimal @db.Decimal(14, 2)
+  lineAmount Decimal @db.Decimal(16, 2)
+  @@unique([orderId, lineNo])
+  @@index([productId])
+}
+
+model Shipment {
+  id String @id @default(cuid())
+  orderId String @unique
+  order CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  shippedAt DateTime @default(now())
+  carrier String?
+  trackingNumber String?
+  memo String?
+  shippedById String?
+  shippedBy User? @relation(fields: [shippedById], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+}
+
+model OrderNumberCounter {
+  date DateTime @id @db.Date
+  lastValue Int
 }
