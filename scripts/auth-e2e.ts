@@ -79,6 +79,7 @@ async function login(jar: CookieJar, email: string, password: string) {
 }
 
 async function cleanup() {
+  await prisma.task.deleteMany({ where: { title: { startsWith: "E2E " } } });
   await prisma.auditLog.deleteMany({
     where: {
       OR: [
@@ -123,6 +124,7 @@ async function main() {
 
     const anonymous = new CookieJar();
     assert.equal((await anonymous.fetch("/api/admin/users")).status, 401);
+    assert.equal((await anonymous.fetch("/api/tasks")).status, 401);
     assert.equal((await anonymous.fetch("/admin/users")).status, 307);
 
     const invalid = await login(anonymous, adminEmail, "Wrong-password-123!");
@@ -150,6 +152,38 @@ async function main() {
     const userLogin = await login(user, userEmail, userPassword);
     assert.doesNotMatch(userLogin.url, /error=/);
     assert.equal((await user.fetch("/api/admin/users")).status, 403);
+    assert.equal((await user.fetch("/admin/tasks")).status, 200);
+    const adminPageForUser = await user.fetch("/admin/users");
+    const adminPageBody = await adminPageForUser.text();
+    assert.doesNotMatch(adminPageBody, /계정을 생성하고 역할 및 활성 상태를 관리합니다/);
+    assert.match(adminPageBody, /forbidden|접근 권한이 없습니다/i);
+    assert.equal((await user.fetch("/api/tasks")).status, 200);
+
+    const createTaskResponse = await user.fetch("/api/tasks", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "E2E task", description: "authorization check" }),
+    });
+    assert.equal(createTaskResponse.status, 201);
+    const createdTask = (await createTaskResponse.json()) as { task: { id: string } };
+    assert.equal(
+      (
+        await user.fetch(`/api/tasks/${createdTask.task.id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ status: "DONE" }),
+        })
+      ).status,
+      200,
+    );
+    assert.equal(
+      (await user.fetch(`/api/tasks/${createdTask.task.id}`, { method: "DELETE" })).status,
+      403,
+    );
+    assert.equal(
+      (await admin.fetch(`/api/tasks/${createdTask.task.id}`, { method: "DELETE" })).status,
+      204,
+    );
 
     const deactivateResponse = await admin.fetch(
       `/api/admin/users/${created.user.id}`,
@@ -187,7 +221,7 @@ async function main() {
     );
 
     assert.ok(await prisma.auditLog.count());
-    console.log("Auth E2E passed: login, RBAC, deactivation, and admin safeguards.");
+    console.log("Auth E2E passed: login, page/API RBAC, Task permissions, deactivation, and admin safeguards.");
   } finally {
     server?.kill("SIGTERM");
     await delay(300);

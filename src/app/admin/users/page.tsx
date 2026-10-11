@@ -1,4 +1,3 @@
-import { SignOutButton } from "@/components/auth/sign-out-button";
 import {
   UserManager,
   type ManagedUser,
@@ -8,6 +7,8 @@ import {
   listRecentAuditLogs,
   listUsers,
 } from "@/lib/users/admin-user-service";
+import { PageHeader } from "@/components/crud/page-header";
+import { EmptyState } from "@/components/crud/async-state";
 
 export const instant = false;
 
@@ -25,25 +26,14 @@ export default async function AdminUsersPage() {
   }));
 
   return (
-    <main className="mx-auto min-h-screen max-w-5xl px-6 py-12">
-      <header className="mb-10 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
-            Administration
-          </p>
-          <h1 className="mt-2 text-4xl font-bold tracking-tight">사용자 관리</h1>
-          <p className="mt-2 text-slate-600">
-            {actor.name ?? actor.email} · {actor.role}
-          </p>
-        </div>
-        <SignOutButton />
-      </header>
+    <div className="space-y-8">
+      <PageHeader description="계정을 생성하고 역할 및 활성 상태를 관리합니다." title="사용자 관리" />
 
       <UserManager currentUserId={actor.id} initialUsers={serializedUsers} />
 
       <section className="mt-12 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-xl font-semibold">최근 감사 로그</h2>
-        <ul className="mt-4 divide-y divide-slate-100">
+        {auditLogs.length === 0 ? <div className="mt-4"><EmptyState title="감사 로그가 없습니다." /></div> : <ul className="mt-4 divide-y divide-slate-100">
           {auditLogs.map((log) => (
             <li className="flex flex-wrap justify-between gap-2 py-3 text-sm" key={log.id}>
               <span>
@@ -54,8 +44,8 @@ export default async function AdminUsersPage() {
               </time>
             </li>
           ))}
-        </ul>
+        </ul>}
       </section>
-    </main>
+    </div>
   );
 }

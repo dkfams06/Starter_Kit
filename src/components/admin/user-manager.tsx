@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { ConfirmDialog } from "@/components/crud/confirm-dialog";
+import { EmptyState } from "@/components/crud/async-state";
 
 export type ManagedUser = {
   id: string;
@@ -133,7 +135,7 @@ export function UserManager({
         <h2 className="text-xl font-semibold" id="user-list-heading">
           사용자 목록
         </h2>
-        {users.map((user) => (
+        {users.length === 0 ? <EmptyState title="등록된 사용자가 없습니다." /> : users.map((user) => (
           <UserEditor
             currentUserId={currentUserId}
             key={user.id}
@@ -159,6 +161,7 @@ function UserEditor({
   user: ManagedUser;
 }) {
   const [message, setMessage] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function update(formData: FormData) {
@@ -208,8 +211,6 @@ function UserEditor({
   }
 
   function deleteAccount() {
-    if (!window.confirm("비활성 계정을 영구 삭제할까요?")) return;
-
     setMessage(null);
     startTransition(async () => {
       const response = await fetch(`/api/admin/users/${user.id}`, {
@@ -222,6 +223,7 @@ function UserEditor({
       }
 
       onDelete(user.id);
+      setConfirmOpen(false);
     });
   }
 
@@ -300,7 +302,7 @@ function UserEditor({
         <button
           className="rounded-lg border border-red-300 px-3 py-2 text-sm text-red-700 disabled:opacity-50"
           disabled={isPending || user.isActive || user.id === currentUserId}
-          onClick={deleteAccount}
+          onClick={() => setConfirmOpen(true)}
           type="button"
         >
           삭제
@@ -311,6 +313,15 @@ function UserEditor({
           {message}
         </p>
       ) : null}
+      <ConfirmDialog
+        confirmLabel="삭제"
+        description={`${user.email} 계정을 영구 삭제합니다.`}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={deleteAccount}
+        open={confirmOpen}
+        pending={isPending}
+        title="비활성 계정을 삭제할까요?"
+      />
     </article>
   );
 }
