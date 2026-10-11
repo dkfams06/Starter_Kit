@@ -31,6 +31,46 @@ enum AuditAction {
   TASK_CREATED
   TASK_UPDATED
   TASK_DELETED
+  CUSTOMER_CREATED
+  CUSTOMER_UPDATED
+  CUSTOMER_DEACTIVATED
+  CUSTOMER_DELETED
+  PRODUCT_CREATED
+  PRODUCT_UPDATED
+  PRODUCT_DEACTIVATED
+  PRODUCT_DELETED
+}
+
+model Customer {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  name           String
+  businessNumber String?
+  contactName    String?
+  phone          String?
+  email          String?
+  defaultAddress String?
+  memo           String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([isActive, name])
+}
+
+model Product {
+  id               String   @id @default(cuid())
+  code             String   @unique
+  name             String
+  specification    String?
+  unit             String
+  defaultUnitPrice Decimal? @db.Decimal(14, 2)
+  memo             String?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([isActive, name])
 }
 
 model User {
