@@ -23,7 +23,7 @@ export function LoginForm() {
         return;
       }
 
-      router.push("/admin/users");
+      router.push("/admin");
       router.refresh();
     });
   }

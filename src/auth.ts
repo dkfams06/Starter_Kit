@@ -98,4 +98,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
   },
+  events: {
+    async signOut(message) {
+      const userId = "token" in message && typeof message.token?.userId === "string"
+        ? message.token.userId
+        : null;
+      await writeAuditLogBestEffort({
+        actorId: userId,
+        action: "LOGOUT",
+        targetType: "User",
+        targetId: userId,
+      });
+    },
+  },
 });

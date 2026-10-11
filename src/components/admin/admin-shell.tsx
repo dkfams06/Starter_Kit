@@ -16,7 +16,7 @@ function Navigation({ items, onNavigate }: { items: AdminNavItem[]; onNavigate?:
   return (
     <nav aria-label="관리 메뉴" className="space-y-1">
       {items.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        const active = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(`${item.href}/`));
         return (
           <Link
             aria-current={active ? "page" : undefined}
