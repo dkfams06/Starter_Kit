@@ -79,7 +79,7 @@
 | `id` | String | cuid PK |
 | `orderId` | String | CustomerOrder FK |
 | `lineNo` | Int | 주문 내 표시 순서 |
-| `productId` | String? | Product FK, delete set null |
+| `productId` | String | Product FK, delete restrict (사용 이력 삭제 금지 정책) |
 | `productCodeSnapshot` | String | 주문 당시 품목 코드 |
 | `productNameSnapshot` | String | 주문 당시 품목명 |
 | `specificationSnapshot` | String? | 주문 당시 규격 |
@@ -113,6 +113,15 @@
 | `lastValue` | Int | 날짜별 마지막 순번 |
 
 주문 생성 트랜잭션에서 Asia/Seoul 업무일 기준의 해당 날짜 행을 잠그고 증가시켜 중복 없는 주문번호를 생성한다. 삭제된 주문번호는 재사용하지 않는다.
+
+### 구현 보완
+
+- `CustomerOrder.customerCodeSnapshot`도 보존한다.
+- `CustomerOrder.version`은 1부터 시작하며 수정·상태 처리마다 증가한다. 모든 변경 API는 현재 `version`을 요구하고 오래된 요청은 409로 거부한다.
+- `Customer.hasOrderHistory`, `Product.hasOrderHistory`는 주문에 사용되면 true가 되며 일반 API로 되돌릴 수 없다. 오입력 주문 삭제 후에도 기준정보 사용 이력을 유지한다.
+- 금액은 품목별 소수 2자리 HALF_UP 반올림 후 합산하며 수량은 소수 3자리까지다.
+- 단일 주문은 최대 50개 품목, 동일 품목 중복 행은 거부한다.
+- 화면 선택 목록은 최대 500개 기준정보로 제한한다. 대규모 고객 도입 시 검색형 선택 UI로 확장한다.
 
 ### Enum과 감사 로그
 

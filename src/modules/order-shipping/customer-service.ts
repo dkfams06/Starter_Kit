@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/auth/audit";
 import { HttpError } from "@/lib/http-error";
 import { assertMasterAccess } from "./master-policy";
+import { lockBusinessWrite } from "./business-lock";
 import { customerSchema, updateCustomerSchema, deleteMasterSchema, masterQuerySchema } from "./master-validation";
 
 export async function listCustomers(actor: CurrentUser, query: unknown = {}) {
@@ -32,6 +33,7 @@ export async function createCustomer(actor: CurrentUser, input: unknown) {
   assertMasterAccess(actor, true);
   const data = customerSchema.parse(input);
   return prisma.$transaction(async tx => {
+    await lockBusinessWrite(tx);
     const item = await tx.customer.create({ data });
     await writeAuditLog({ actorId: actor.id, action: "CUSTOMER_CREATED", targetType: "Customer", targetId: item.id, metadata: { code: item.code } }, tx);
     return item;
@@ -42,6 +44,7 @@ export async function updateCustomer(actor: CurrentUser, id: string, input: unkn
   assertMasterAccess(actor, true);
   const data = updateCustomerSchema.parse(input);
   return prisma.$transaction(async tx => {
+    await lockBusinessWrite(tx);
     const previous = await tx.customer.findUniqueOrThrow({ where: { id } });
     const item = await tx.customer.update({ where: { id }, data });
     await writeAuditLog({
@@ -57,9 +60,9 @@ export async function deleteCustomer(actor: CurrentUser, id: string, input: unkn
   assertMasterAccess(actor, true);
   const { reason } = deleteMasterSchema.parse(input);
   return prisma.$transaction(async tx => {
+    await lockBusinessWrite(tx);
     const item = await tx.customer.findUniqueOrThrow({ where: { id } });
-    // Order references do not exist in this release. Order integration must add
-    // history checks and RESTRICT foreign keys before accepting orders.
+    if (item.hasOrderHistory) throw new HttpError("주문 사용 이력이 있어 삭제할 수 없습니다. 비활성화해 주세요.", 409, "USED_MASTER");
     await tx.customer.delete({ where: { id } });
     await writeAuditLog({ actorId: actor.id, action: "CUSTOMER_DELETED", targetType: "Customer", targetId: id, metadata: { code: item.code, reason } }, tx);
   }, { isolationLevel: "Serializable" });

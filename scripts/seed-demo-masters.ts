@@ -12,6 +12,7 @@ async function main() {
   const database = await prisma.$queryRaw<Array<{ name: string }>>`SELECT current_database() AS name`;
   if (database[0].name !== process.env.DEMO_DATABASE_NAME) throw new Error("Demo database identity mismatch.");
   await prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock_shared(73110402)`;
     for (const suffix of ["001", "002", "003"]) {
       const code = `DEMO-C-${suffix}`;
       if (await tx.customer.findUnique({ where: { code } })) continue;

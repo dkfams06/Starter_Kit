@@ -8,6 +8,8 @@ export const instant = false;
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const user = await requirePageUser();
   const items: AdminNavItem[] = [];
+  items.push({ href: "/admin/operations", label: "업무 현황" });
+  items.push({ href: "/admin/orders", label: "주문·출고 관리" });
   if (user.role === "ADMIN") items.push({ href: "/admin", label: "대시보드" });
   items.push({ href: "/admin/customers", label: "거래처 관리" });
   items.push({ href: "/admin/products", label: "품목 관리" });
